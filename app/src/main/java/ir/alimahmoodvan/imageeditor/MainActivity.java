@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 
 public class MainActivity extends Activity {
     private static final String TAG = "PhotoerImageActivity";
@@ -14,8 +15,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Button btn_picker=findViewById(R.id.btn_picker);
-        btn_picker.setOnClickListener(new View.OnClickListener() {
+        ImageButton btn_gallery=findViewById(R.id.btn_gallery);
+        btn_gallery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);

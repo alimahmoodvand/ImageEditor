@@ -105,6 +105,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     final ImageButton btn = new ImageButton(this);
                     ViewGroup.MarginLayoutParams marginLayoutParams=(ViewGroup.MarginLayoutParams)new LinearLayout.LayoutParams(btnHeight, btnHeight);
                     marginLayoutParams.setMargins(marginBtn,marginBtn,marginBtn,marginBtn);
+                    btn.setScaleType(ImageView.ScaleType.CENTER_CROP);
                     btn.setLayoutParams(marginLayoutParams);
 
                     btn.setImageBitmap(getBitmapFromURL("https://images.ganeshaspeaks.com/GS-V4/images/womenDay/thumb200/capricorn-women.jpg"));
@@ -138,36 +139,8 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     effectll.addView(effectName);
                     effectll.addView(btn);
                     ll.addView(effectll);
-                    btn.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d(TAG, " btn onCreate: " + btn.getHeight() + ":::" + btn.getLayoutParams().width);
-
-                        }
-                    });
-                    effectName.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d(TAG, " btn onCreate: " + effectName.getHeight() + ":::" + effectName.getLayoutParams().width);
-
-                        }
-                    });
                 }
             }
-            mEffectView.post(new Runnable() {
-                @Override
-                public void run() {
-                    Log.d(TAG, " mEffectView onCreate: " + mEffectView.getHeight() + ":::" + mEffectView.getLayoutParams().width);
-
-                }
-            });
-            ll.post(new Runnable() {
-                @Override
-                public void run() {
-                    Log.d(TAG, "ll onCreate: " + ll.getHeight() + ":::" + ll.getLayoutParams().width);
-
-                }
-            });
         } catch (Exception e) {
             Log.d(TAG, "onCreate: " + e.getMessage());
         }
@@ -209,30 +182,30 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         effectViewHeight =(int)( realHeight * 0.75);
         llHeight =(int)( realHeight * 0.2);
         btnHeight=llHeight-(3*textViewSize)-(2*marginBtn)-(2*marginBtn);
-        Log.d(TAG, "responsive: "+realHeight);
-        Log.d(TAG, "responsive: "+effectViewHeight);
-        Log.d(TAG, "responsive: "+llHeight);
-        Log.d(TAG, "responsive: "+btnHeight);
+//        Log.d(TAG, "responsive: "+realHeight);
+//        Log.d(TAG, "responsive: "+effectViewHeight);
+//        Log.d(TAG, "responsive: "+llHeight);
+//        Log.d(TAG, "responsive: "+btnHeight);
     }
 
     public Bitmap getBitmapFromURL(String src) {
         try {
-            java.net.URL url = new java.net.URL(src);
-            HttpURLConnection connection = (HttpURLConnection) url
-                    .openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream input = connection.getInputStream();
-            Bitmap myBitmap = BitmapFactory.decodeStream(input);
+//            java.net.URL url = new java.net.URL(src);
+//            HttpURLConnection connection = (HttpURLConnection) url
+//                    .openConnection();
+//            connection.setDoInput(true);
+//            connection.connect();
+//            InputStream input = connection.getInputStream();
+            Bitmap myBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.min3);
 //            Log.d(TAG, "responsive: "+btnHeight);
 //            Log.d(TAG, "responsive: "+myBitmap.getHeight());
 //            Log.d(TAG, "responsive: "+myBitmap.getWidth());
 
             return myBitmap;
-        } catch (IOException e) {
+        }/* catch (IOException e) {
             Log.d(TAG, "getBitmapFromURL: "+e.getMessage());
             return null;
-        }catch (Exception e) {
+        }*/catch (Exception e) {
             Log.d(TAG, "getBitmapFromURL: "+e.getMessage());
             return null;
         }
@@ -262,6 +235,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             Bitmap bitmap =getResizedBitmap(BitmapFactory.decodeFile(imgFile.getAbsolutePath()),effectViewHeight);
             mImageWidth = bitmap.getWidth()/2;
             mImageHeight = bitmap.getHeight()/2;
+
             mTexRenderer.updateTextureSize(mImageWidth, mImageHeight);
             // Upload to texture
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
@@ -425,7 +399,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         }
         renderResult();
         if (saveFrame) {
-//            saveBitmap(takeScreenshot(gl));
+            saveBitmap(takeScreenshot(gl));
         }
     }
     @Override
@@ -441,7 +415,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         Random generator = new Random();
         int n = 10000;
         n = generator.nextInt(n);
-        String fname = "Image-"+ n +".jpg";
+        String fname =mCurrentEffect+ ".jpg";
         File file = new File (myDir, fname);
         if (file.exists ()) file.delete ();
         try {
