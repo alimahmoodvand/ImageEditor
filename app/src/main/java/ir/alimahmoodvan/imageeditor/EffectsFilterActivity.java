@@ -5,13 +5,20 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Display;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.media.effect.Effect;
 import android.media.effect.EffectContext;
@@ -20,19 +27,26 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
 import java.nio.IntBuffer;
 import java.util.Random;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 public class EffectsFilterActivity extends Activity implements GLSurfaceView.Renderer {
-    private static final String TAG = "ImageEffectsFilterActivity";
+    private static final String TAG = "EffectsFilterActivity";
     private GLSurfaceView mEffectView;
     private int[] mTextures = new int[2];
     private EffectContext mEffectContext;
@@ -44,7 +58,11 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
     String mCurrentEffect;
     String realPath="";
     private volatile boolean saveFrame;
-
+    private int effectViewHeight;
+    int llHeight;
+    int btnHeight;
+    int textViewSize=10;
+    int marginBtn=1;
     public void setCurrentEffect(String effect) {
         mCurrentEffect = effect;
     }
@@ -53,65 +71,206 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_filter);
-        /**
-         * Initialise the renderer and tell it to only render when
-         * Explicit requested with the RENDERMODE_WHEN_DIRTY option
-         */
-        realPath= getIntent().getStringExtra("realPath");
-        mEffectView = (GLSurfaceView) findViewById(R.id.effectsview);
-        mEffectView.setEGLContextClientVersion(2);
-        mEffectView.setRenderer(this);
-        mEffectView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-        mCurrentEffect = "";
-        java.lang.reflect.Field[] effects=EffectFactory.class.getDeclaredFields();
-        LinearLayout ll=findViewById(R.id.ll);
-        GradientDrawable gd = new GradientDrawable();
-        gd.setColor(0xFF00FF00); // Changes this drawbale to use a single color instead of a gradient
-        gd.setCornerRadius(5);
-        gd.setStroke(3, 0xFF000000);
+        try {
+            responsive();
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            final LinearLayout ll = findViewById(R.id.ll);
+            ViewGroup.LayoutParams layoutParams=ll.getLayoutParams();
+            layoutParams.height=llHeight;
+            ll.setLayoutParams(layoutParams);
+            realPath = getIntent().getStringExtra("realPath");
+            mEffectView = (GLSurfaceView) findViewById(R.id.effectsview);
+             layoutParams=mEffectView.getLayoutParams();
+            layoutParams.height=effectViewHeight;
+            mEffectView.setLayoutParams(layoutParams);
+            mEffectView.setEGLContextClientVersion(2);
+            mEffectView.setRenderer(this);
+            mEffectView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+            mCurrentEffect = "";
+            java.lang.reflect.Field[] effects = EffectFactory.class.getDeclaredFields();
+            GradientDrawable gd = new GradientDrawable();
+            gd.setColor(0xFF00FF00); // Changes this drawbale to use a single color instead of a gradient
+//            gd.setCornerRadius(5);
+            gd.setStroke(marginBtn, 0xFF000000);
 
-        for (int i=0;i<effects.length;i++){
-            final java.lang.reflect.Field effect=effects[i];
-            if(effect.getName().contains("EFFECT")) {
-                Button btn = new Button(this);
-                btn.setWidth(240);
-                btn.setHeight(240);
-                btn.setText(effect.getName());
-                try{btn.setBackground(gd);}catch (Exception ex){Log.d(TAG, "onCreate: "+ex.getMessage());}
-                btn.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-                btn.setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        try {
-                            effect.setAccessible(true);
-                            Class<?> targetType = effect.getType();
-                            Object objectValue = targetType.newInstance();
-                            Object value = effect.get(objectValue);
-                            setCurrentEffect((String) (value));
-                            mEffectView.requestRender();
-                        }catch (Exception ex){
+            for (int i = 0; i < effects.length; i++) {
+                final java.lang.reflect.Field effect = effects[i];
+                if (effect.getName().contains("EFFECT")) {
+                    LinearLayout effectll = new LinearLayout(this);
+                    effectll.setOrientation(LinearLayout.VERTICAL);
+                    effectll.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+
+                    final ImageButton btn = new ImageButton(this);
+                    ViewGroup.MarginLayoutParams marginLayoutParams=(ViewGroup.MarginLayoutParams)new LinearLayout.LayoutParams(btnHeight, btnHeight);
+                    marginLayoutParams.setMargins(marginBtn,marginBtn,marginBtn,marginBtn);
+                    btn.setLayoutParams(marginLayoutParams);
+
+                    btn.setImageBitmap(getBitmapFromURL("https://images.ganeshaspeaks.com/GS-V4/images/womenDay/thumb200/capricorn-women.jpg"));
+                    final TextView effectName = new TextView(this);
+                    effectName.setText(effect.getName().replace("EFFECT_", ""));
+                    effectName.setTextSize(TypedValue.COMPLEX_UNIT_SP, textViewSize);
+                    effectName.setGravity(Gravity.CENTER);
+//                btn.setWidth(240);setTextSize(TypedValue.COMPLEX_UNIT_SP,14);
+//                btn.setHeight(240);
+//                btn.setText(effect.getName().replace("EFFECT_",""));
+//                    try {
+//                        btn.setBackground(gd);
+//                    } catch (Exception ex) {
+//                        Log.d(TAG, "onCreate: " + ex.getMessage());
+//                    }
+                    btn.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    btn.setOnClickListener(new View.OnClickListener() {
+                        public void onClick(View v) {
+                            try {
+                                effect.setAccessible(true);
+                                Class<?> targetType = effect.getType();
+                                Object objectValue = targetType.newInstance();
+                                Object value = effect.get(objectValue);
+                                setCurrentEffect((String) (value));
+                                mEffectView.requestRender();
+                            } catch (Exception ex) {
+
+                            }
+                        }
+                    });
+                    effectll.addView(effectName);
+                    effectll.addView(btn);
+                    ll.addView(effectll);
+                    btn.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d(TAG, " btn onCreate: " + btn.getHeight() + ":::" + btn.getLayoutParams().width);
 
                         }
-                    }
-                });
-                ll.addView(btn);
+                    });
+                    effectName.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d(TAG, " btn onCreate: " + effectName.getHeight() + ":::" + effectName.getLayoutParams().width);
+
+                        }
+                    });
+                }
             }
+            mEffectView.post(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, " mEffectView onCreate: " + mEffectView.getHeight() + ":::" + mEffectView.getLayoutParams().width);
+
+                }
+            });
+            ll.post(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "ll onCreate: " + ll.getHeight() + ":::" + ll.getLayoutParams().width);
+
+                }
+            });
+        } catch (Exception e) {
+            Log.d(TAG, "onCreate: " + e.getMessage());
         }
+    }
+
+    private void responsive() {
+        Display display = getWindowManager().getDefaultDisplay();
+        DisplayMetrics dm = new DisplayMetrics();
+        display.getMetrics(dm);
+        int realWidth;
+        int realHeight;
+
+        if (Build.VERSION.SDK_INT >= 17){
+            //new pleasant way to get real metrics
+            DisplayMetrics realMetrics = new DisplayMetrics();
+            display.getRealMetrics(realMetrics);
+            realWidth = realMetrics.widthPixels;
+            realHeight = realMetrics.heightPixels;
+
+        } else if (Build.VERSION.SDK_INT >= 14) {
+            //reflection for this weird in-between time
+            try {
+                Method mGetRawH = Display.class.getMethod("getRawHeight");
+                Method mGetRawW = Display.class.getMethod("getRawWidth");
+                realWidth = (Integer) mGetRawW.invoke(display);
+                realHeight = (Integer) mGetRawH.invoke(display);
+            } catch (Exception e) {
+                //this may not be 100% accurate, but it's all we've got
+                realWidth = display.getWidth();
+                realHeight = display.getHeight();
+                Log.e("Display Info", "Couldn't use reflection to get the real display metrics.");
+            }
+
+        } else {
+            //This should be close, as lower API devices should not have window navigation bars
+            realWidth = display.getWidth();
+            realHeight = display.getHeight();
+        }
+        effectViewHeight =(int)( realHeight * 0.75);
+        llHeight =(int)( realHeight * 0.2);
+        btnHeight=llHeight-(3*textViewSize)-(2*marginBtn)-(2*marginBtn);
+        Log.d(TAG, "responsive: "+realHeight);
+        Log.d(TAG, "responsive: "+effectViewHeight);
+        Log.d(TAG, "responsive: "+llHeight);
+        Log.d(TAG, "responsive: "+btnHeight);
+    }
+
+    public Bitmap getBitmapFromURL(String src) {
+        try {
+            java.net.URL url = new java.net.URL(src);
+            HttpURLConnection connection = (HttpURLConnection) url
+                    .openConnection();
+            connection.setDoInput(true);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+            Bitmap myBitmap = BitmapFactory.decodeStream(input);
+//            Log.d(TAG, "responsive: "+btnHeight);
+//            Log.d(TAG, "responsive: "+myBitmap.getHeight());
+//            Log.d(TAG, "responsive: "+myBitmap.getWidth());
+
+            return myBitmap;
+        } catch (IOException e) {
+            Log.d(TAG, "getBitmapFromURL: "+e.getMessage());
+            return null;
+        }catch (Exception e) {
+            Log.d(TAG, "getBitmapFromURL: "+e.getMessage());
+            return null;
+        }
+    }
+    public Bitmap getResizedBitmap(Bitmap image, int maxSize) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        maxSize=effectViewHeight;
+        float bitmapRatio = (float) width / (float) height;
+        if (bitmapRatio > 1) {
+            width = maxSize;
+            height = (int) (width / bitmapRatio);
+        } else {
+            height = maxSize;
+            width = (int) (height * bitmapRatio);
+        }
+
+        return Bitmap.createScaledBitmap(image, width, height, true);
     }
     private void loadTextures() {
         // Generate textures
-        GLES20.glGenTextures(2, mTextures, 0);
-        // Load input bitmap
-        Log.d(TAG, "loadTextures: "+realPath);
-        File imgFile = new File(realPath);
-        Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
-        mImageWidth = bitmap.getWidth();
-        mImageHeight = bitmap.getHeight();
-        mTexRenderer.updateTextureSize(mImageWidth, mImageHeight);
-        // Upload to texture
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-        // Set texture parameters
-        GLToolbox.initTexParams();
+        try {
+            GLES20.glGenTextures(2, mTextures, 0);
+            // Load input bitmap
+            Log.d(TAG, "loadTextures: " + realPath);
+            File imgFile = new File(realPath);
+            Bitmap bitmap =getResizedBitmap(BitmapFactory.decodeFile(imgFile.getAbsolutePath()),effectViewHeight);
+            mImageWidth = bitmap.getWidth()/2;
+            mImageHeight = bitmap.getHeight()/2;
+            mTexRenderer.updateTextureSize(mImageWidth, mImageHeight);
+            // Upload to texture
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+            // Set texture parameters
+            GLToolbox.initTexParams();
+        }catch (Exception e){
+            Log.d(TAG, "loadTextures: "+e.getMessage());
+        }
     }
     private void initEffect() {
         EffectFactory effectFactory = mEffectContext.getFactory();
@@ -315,7 +474,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
     }
-//    @Override
+    //    @Override
 //    public boolean onCreateOptionsMenu(Menu menu) {
 //        MenuInflater inflater = getMenuInflater();
 //        inflater.inflate(R.menu.main, menu);
