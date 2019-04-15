@@ -10,7 +10,8 @@
     <android.opengl.GLSurfaceView
         android:id="@+id/effectsview"
         android:layout_height="wrap_content"
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
+        android:backgroundTint="@color/colorAccent"
          />
 
     <HorizontalScrollView
@@ -23,4 +24,23 @@
             android:layout_height="match_parent"
             android:orientation="horizontal"></LinearLayout>
     </HorizontalScrollView>
+    <LinearLayout
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:id="@+id/share"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:text="share"
+            android:drawableLeft="@drawable/share"
+            android:textSize="10sp"/>
+        <Button
+            android:id="@+id/save"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:text="share"
+            android:drawableLeft="@drawable/save"
+            android:textSize="10sp"/>
+    </LinearLayout>
 </LinearLayout>

@@ -83,7 +83,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             mEffectView = (GLSurfaceView) findViewById(R.id.effectsview);
              layoutParams=mEffectView.getLayoutParams();
             layoutParams.height=effectViewHeight;
-            mEffectView.setLayoutParams(layoutParams);
+            //mEffectView.setLayoutParams(layoutParams);
             mEffectView.setEGLContextClientVersion(2);
             mEffectView.setRenderer(this);
             mEffectView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -179,7 +179,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             realWidth = display.getWidth();
             realHeight = display.getHeight();
         }
-        effectViewHeight =(int)( realHeight * 0.75);
+        effectViewHeight =(int)( realHeight * 0.7);
         llHeight =(int)( realHeight * 0.2);
         btnHeight=llHeight-(3*textViewSize)-(2*marginBtn)-(2*marginBtn);
 //        Log.d(TAG, "responsive: "+realHeight);
@@ -235,6 +235,10 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             Bitmap bitmap =getResizedBitmap(BitmapFactory.decodeFile(imgFile.getAbsolutePath()),effectViewHeight);
             mImageWidth = bitmap.getWidth()/2;
             mImageHeight = bitmap.getHeight()/2;
+
+//            ViewGroup.LayoutParams layoutParams=mEffectView.getLayoutParams();
+//            layoutParams.height=mImageHeight;
+//            mEffectView.setLayoutParams(layoutParams);
 
             mTexRenderer.updateTextureSize(mImageWidth, mImageHeight);
             // Upload to texture
