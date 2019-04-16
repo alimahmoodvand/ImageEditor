@@ -1,14 +1,20 @@
 package ir.alimahmoodvan.imageeditor;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.drawable.GradientDrawable;
+import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
+import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -31,12 +37,14 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
@@ -63,6 +71,11 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
     int btnHeight;
     int textViewSize=10;
     int marginBtn=1;
+    private Bitmap mainBitmap;
+    int saveClicked=0;
+    private int shareClicked=0;
+    private int maxSize;
+
     public void setCurrentEffect(String effect) {
         mCurrentEffect = effect;
     }
@@ -90,9 +103,56 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             mCurrentEffect = "";
             java.lang.reflect.Field[] effects = EffectFactory.class.getDeclaredFields();
             GradientDrawable gd = new GradientDrawable();
-            gd.setColor(0xFF00FF00); // Changes this drawbale to use a single color instead of a gradient
-//            gd.setCornerRadius(5);
+            gd.setColor(0xFF00FF00);
             gd.setStroke(marginBtn, 0xFF000000);
+
+            ImageButton btn_save=findViewById(R.id.btn_save);
+            btn_save.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    saveClicked=1;
+//                    setCurrentEffect(mCurrentEffect);
+                    mEffectView.requestRender();
+                    Toast.makeText(getApplicationContext(),getResources().getString(R.string.save_message),Toast.LENGTH_SHORT).show();
+                }
+            });
+            ImageButton btn_share=findViewById(R.id.btn_share);
+            btn_share.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    shareClicked=1;
+//                    setCurrentEffect(mCurrentEffect);
+//                    mEffectView.requestRender();
+//                    Intent intent = new Intent(Intent.ACTION_SEND);
+//                    String bitmapPath = MediaStore.Images.Media.insertImage(getContentResolver(), mainBitmap,"title", null);
+//                    Uri bitmapUri = Uri.parse(bitmapPath);
+//                    intent.putExtra(Intent.EXTRA_STREAM, bitmapUri );
+//                    intent.setType("image/*");
+//
+//                    startActivity(Intent.createChooser(intent , "Share"));
+                    Intent share = new Intent(Intent.ACTION_SEND);
+                    share.setType("image/*");
+
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Images.Media.TITLE, "title");
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                    Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            values);
+                    OutputStream outstream;
+                    try {
+                        outstream = getContentResolver().openOutputStream(uri);
+                        mainBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outstream);
+                        outstream.close();
+                    } catch (Exception e) {
+                        System.err.println(e.toString());
+                    }
+                    share.putExtra(Intent.EXTRA_TEXT, getResources().getString(R.string.share_message));
+                    share.putExtra(Intent.EXTRA_STREAM, uri);
+                    startActivity(Intent.createChooser(share, "Share Image"));
+                }
+            });
+
+
 
             for (int i = 0; i < effects.length; i++) {
                 final java.lang.reflect.Field effect = effects[i];
@@ -182,6 +242,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         effectViewHeight =(int)( realHeight * 0.7);
         llHeight =(int)( realHeight * 0.2);
         btnHeight=llHeight-(3*textViewSize)-(2*marginBtn)-(2*marginBtn);
+        maxSize=realHeight<realWidth?realHeight:realWidth;
 //        Log.d(TAG, "responsive: "+realHeight);
 //        Log.d(TAG, "responsive: "+effectViewHeight);
 //        Log.d(TAG, "responsive: "+llHeight);
@@ -210,10 +271,13 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             return null;
         }
     }
-    public Bitmap getResizedBitmap(Bitmap image, int maxSize) {
+    public Bitmap getResizedBitmap(File imageFile) {
+        Bitmap image = BitmapFactory.decodeFile(imageFile.getPath());
+        int imageRotation = getImageRotation(imageFile);
+//        Bitmap image=getRotateImage(imageFile);
         int width = image.getWidth();
         int height = image.getHeight();
-        maxSize=effectViewHeight;
+//        maxSize=effectViewHeight;
         float bitmapRatio = (float) width / (float) height;
         if (bitmapRatio > 1) {
             width = maxSize;
@@ -222,7 +286,8 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             height = maxSize;
             width = (int) (height * bitmapRatio);
         }
-
+        if (imageRotation != 0)
+            return getBitmapRotatedByDegree(Bitmap.createScaledBitmap(image, width, height, true), imageRotation);
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
     private void loadTextures() {
@@ -232,9 +297,9 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             // Load input bitmap
             Log.d(TAG, "loadTextures: " + realPath);
             File imgFile = new File(realPath);
-            Bitmap bitmap =getResizedBitmap(BitmapFactory.decodeFile(imgFile.getAbsolutePath()),effectViewHeight);
-            mImageWidth = bitmap.getWidth()/2;
-            mImageHeight = bitmap.getHeight()/2;
+            mainBitmap =getResizedBitmap(imgFile);
+            mImageWidth = mainBitmap.getWidth()/2;
+            mImageHeight = mainBitmap.getHeight()/2;
 
 //            ViewGroup.LayoutParams layoutParams=mEffectView.getLayoutParams();
 //            layoutParams.height=mImageHeight;
@@ -243,7 +308,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             mTexRenderer.updateTextureSize(mImageWidth, mImageHeight);
             // Upload to texture
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, mainBitmap, 0);
             // Set texture parameters
             GLToolbox.initTexParams();
         }catch (Exception e){
@@ -402,7 +467,8 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             applyEffect();
         }
         renderResult();
-        if (saveFrame) {
+        if (saveFrame/*&&saveClicked==1*/) {
+            saveClicked=0;
             saveBitmap(takeScreenshot(gl));
         }
     }
@@ -433,19 +499,28 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         }
     }
     public Bitmap takeScreenshot(GL10 mGL) {
+        final int iWidth = mainBitmap.getWidth();
+        final int iHeight = mainBitmap.getHeight();
         final int mWidth = mEffectView.getWidth();
         final int mHeight = mEffectView.getHeight();
-        IntBuffer ib = IntBuffer.allocate(mWidth * mHeight);
-        IntBuffer ibt = IntBuffer.allocate(mWidth * mHeight);
-        mGL.glReadPixels(0, 0, mWidth, mHeight, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
+        int bWidth =(mWidth-iWidth)/2;
+        int bHeight = (mHeight-iHeight)/2;
+//        int wminus=bWidth<0?bWidth:0;
+//        int hminus=bHeight<0?bHeight:0;
+        Log.d(TAG, "takeScreenshot: "+mWidth+":::"+mHeight);
+        Log.d(TAG, "takeScreenshot: "+iWidth+":::"+iHeight);
+        Log.d(TAG, "takeScreenshot: "+bWidth+":::"+bHeight);
+        IntBuffer ib = IntBuffer.allocate(iWidth * iHeight);
+        IntBuffer ibt = IntBuffer.allocate(iWidth * iHeight);
+        mGL.glReadPixels(bWidth, bHeight, iWidth, iHeight, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
         // Convert upside down mirror-reversed image to right-side up normal
         // image.
-        for (int i = 0; i < mHeight; i++) {
-            for (int j = 0; j < mWidth; j++) {
-                ibt.put((mHeight - i - 1) * mWidth + j, ib.get(i * mWidth + j));
+        for (int i = 0; i < iHeight; i++) {
+            for (int j = 0; j < iWidth; j++) {
+                ibt.put((iHeight - i - 1) * iWidth + j, ib.get(i * iWidth + j));
             }
         }
-        Bitmap mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
+        Bitmap mBitmap = Bitmap.createBitmap(iWidth, iHeight, Bitmap.Config.ARGB_8888);
         mBitmap.copyPixelsFromBuffer(ibt);
         return mBitmap;
     }
@@ -463,6 +538,48 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
 //        setCurrentEffect(item.getItemId());
 //        mEffectView.requestRender();
         return true;
+    }
+    public static Bitmap getRotateImage(final File imageFile) {
+        Bitmap photoBitmap = BitmapFactory.decodeFile(imageFile.getPath());
+        int imageRotation = getImageRotation(imageFile);
+        if (imageRotation != 0)
+            photoBitmap = getBitmapRotatedByDegree(photoBitmap, imageRotation);
+        return photoBitmap;
+    }
+    private static int getImageRotation(final File imageFile) {
+
+        ExifInterface exif = null;
+        int exifRotation = 0;
+
+        try {
+            exif = new ExifInterface(imageFile.getPath());
+            exifRotation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (exif == null)
+            return 0;
+        else
+            return exifToDegrees(exifRotation);
+    }
+
+    private static int exifToDegrees(int rotation) {
+        if (rotation == ExifInterface.ORIENTATION_ROTATE_90)
+            return 90;
+        else if (rotation == ExifInterface.ORIENTATION_ROTATE_180)
+            return 180;
+        else if (rotation == ExifInterface.ORIENTATION_ROTATE_270)
+            return 270;
+
+        return 0;
+    }
+
+    private static Bitmap getBitmapRotatedByDegree(Bitmap bitmap, int rotationDegree) {
+        Matrix matrix = new Matrix();
+        matrix.preRotate(rotationDegree);
+
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 }
 

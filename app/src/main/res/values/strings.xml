@@ -24,4 +24,7 @@
     <string name="temperature">Temperature</string>
     <string name="tint">Tint</string>
     <string name="vignette">Vignette</string>
+    <string name="save_message">تصویر ذخیره شد</string>
+    <string name="share_message">اپ عکسینه</string>
+
 </resources>
