@@ -26,5 +26,19 @@
     <string name="vignette">Vignette</string>
     <string name="save_message">تصویر ذخیره شد</string>
     <string name="share_message">اپ عکسینه</string>
+    <string name="error_message">مشکلی به وجود آمده . دوباره امتحان کنید</string>
+    <string name="vas_title">اپلیکیشن ستاره شو </string>
+    <string name="subscribe_message">شما با موفقیت عضو شدید</string>
+    <string name="otp_message">کد ارسال شده را وارد کنید</string>
+    <string name="vas_message">مشترک گرامی به ستاره شو  خوش آمدید
+با نصب اپلیکیشن ستاره شو می توانید از جدید ترین و بروز ترین آموزش ها و امکانات بی نظیر این سرویس استفاده نمایید.
+http://ndigi.ir/images/apps/file/setareshow.apk
+تعرفه روزانه  500تومان   جهت لغو کلمه خاموش یا off را  به همین سر شماره ارسال نمایید
+شما می توانید برای  بهبود این راه با ما همراه شوید</string>
+    <string name="btn_pos">باشه</string>
+    <string name="btn_neg">بیخیال</string>
+    <string name="token">70763b1524dde867d96c8e76f84de4f2</string>
+    <string name="shared_preferences">ImageEditorSharedPreferences</string>
+
 
 </resources>

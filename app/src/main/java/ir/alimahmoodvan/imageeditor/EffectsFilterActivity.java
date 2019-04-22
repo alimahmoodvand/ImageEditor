@@ -49,6 +49,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -113,7 +116,11 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     saveClicked=1;
 //                    setCurrentEffect(mCurrentEffect);
                     mEffectView.requestRender();
-                    Toast.makeText(getApplicationContext(),getResources().getString(R.string.save_message),Toast.LENGTH_SHORT).show();
+                    Toast toast= Toast.makeText(getApplicationContext(),getResources().getString(R.string.save_message),Toast.LENGTH_SHORT);
+                    View view = toast.getView();
+                    TextView text = view.findViewById(android.R.id.message);
+                    text.setTextColor(getResources().getColor(android.R.color.holo_blue_bright));
+                    toast.show();
                 }
             });
             ImageButton btn_share=findViewById(R.id.btn_share);
@@ -152,11 +159,67 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                 }
             });
 
-
-
+            
+            List<String> effectFa= Arrays.asList("تعمیر خودکار",
+                    "لایه",
+                    "سیاه سفید",
+                    "روشنایی",
+                    "تضاد",
+                    "زراعت",
+                    "ادغام",
+                    "مستند",
+                    "دوتونه",
+                    "پر کردن",
+                    "ماهیگیر",
+                    "FLIP",
+                    "غلات",
+                    "گریسکل",
+                    "هویت",
+                    "لیموش",
+                    "منفی",
+                    "بسته ها",
+                    "بستن",
+                    "چرخاندن",
+                    "انعطاف پذیری",
+                    "سپتامبر",
+                    "شفاف",
+                    "استراحت",
+                    "درجه حرارت",
+                    "رنگ کردن",
+                    "ویگنته"
+                    
+            );
+                    List<String> effectEn= Arrays.asList("AUTOFIX"
+                    ,"BITMAPOVERLAY"
+                    ,"BLACKWHITE"
+                    ,"BRIGHTNESS"
+                    ,"CONTRAST"
+                    ,"CROP"
+                    ,"CROSS PROCESS"
+                    ,"DOCUMENTARY"
+                    ,"DUOTONE"
+                    ,"FILLLIGHT"
+                    ,"FISHEYE"
+                    ,"FLIP"
+                    ,"GRAIN"
+                    ,"GRAYSCALE"
+                    ,"IDENTITY"
+                    ,"LOMOISH"
+                    ,"NEGATIVE"
+                    ,"PACKAGES"
+                    ,"POSTERIZE"
+                    ,"ROTATE"
+                    ,"SATURATE"
+                    ,"SEPIA"
+                    ,"SHARPEN"
+                    ,"STRAIGHTEN"
+                    ,"TEMPERATURE"
+                    ,"TINT"
+                    ,"VIGNETTE");
             for (int i = 0; i < effects.length; i++) {
                 final java.lang.reflect.Field effect = effects[i];
-                if (effect.getName().contains("EFFECT")) {
+                int index=effectEn.indexOf(effect.getName().replace("EFFECT_", ""));
+                if (effect.getName().contains("EFFECT")&&index!=-1) {
                     LinearLayout effectll = new LinearLayout(this);
                     effectll.setOrientation(LinearLayout.VERTICAL);
                     effectll.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -170,7 +233,8 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
 
                     btn.setImageBitmap(getBitmapFromURL("https://images.ganeshaspeaks.com/GS-V4/images/womenDay/thumb200/capricorn-women.jpg"));
                     final TextView effectName = new TextView(this);
-                    effectName.setText(effect.getName().replace("EFFECT_", ""));
+//                    effectName.setText(effect.getName().replace("EFFECT_", ""));
+                    effectName.setText(effectFa.get(index));
                     effectName.setTextSize(TypedValue.COMPLEX_UNIT_SP, textViewSize);
                     effectName.setGravity(Gravity.CENTER);
 //                btn.setWidth(240);setTextSize(TypedValue.COMPLEX_UNIT_SP,14);
@@ -201,11 +265,15 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     ll.addView(effectll);
                 }
             }
+            Log.d(TAG, "onCreate: ");
         } catch (Exception e) {
             Log.d(TAG, "onCreate: " + e.getMessage());
         }
     }
-
+    @Override
+    public void onBackPressed() {
+        finish();
+    }
     private void responsive() {
         Display display = getWindowManager().getDefaultDisplay();
         DisplayMetrics dm = new DisplayMetrics();

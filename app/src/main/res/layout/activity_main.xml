@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:gravity="center|top"
     android:paddingTop="100dp"
+    android:background="@drawable/bg"
     tools:context="ir.alimahmoodvan.imageeditor.MainActivity">
 
     <ImageButton
