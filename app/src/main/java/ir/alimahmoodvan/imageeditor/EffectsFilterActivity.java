@@ -1,7 +1,9 @@
 package ir.alimahmoodvan.imageeditor;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import android.provider.MediaStore;
+import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -33,11 +36,14 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -78,7 +84,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
     int saveClicked=0;
     private int shareClicked=0;
     private int maxSize;
-
+    public   JSONObject subData;
     public void setCurrentEffect(String effect) {
         mCurrentEffect = effect;
     }
@@ -87,6 +93,11 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_filter);
+        try{
+            subData=new JSONObject(Helper.getData(getApplicationContext(),"subData"));
+        }catch (Exception e){
+
+        }
         try {
             responsive();
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -105,6 +116,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             mEffectView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
             mCurrentEffect = "";
             java.lang.reflect.Field[] effects = EffectFactory.class.getDeclaredFields();
+            final java.lang.reflect.Field[] effectsFinal = EffectFactory.class.getDeclaredFields();
             GradientDrawable gd = new GradientDrawable();
             gd.setColor(0xFF00FF00);
             gd.setStroke(marginBtn, 0xFF000000);
@@ -116,11 +128,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     saveClicked=1;
 //                    setCurrentEffect(mCurrentEffect);
                     mEffectView.requestRender();
-                    Toast toast= Toast.makeText(getApplicationContext(),getResources().getString(R.string.save_message),Toast.LENGTH_SHORT);
-                    View view = toast.getView();
-                    TextView text = view.findViewById(android.R.id.message);
-                    text.setTextColor(getResources().getColor(android.R.color.holo_blue_bright));
-                    toast.show();
+                    Helper.showToast(getApplicationContext(),getResources().getString(R.string.save_message));
                 }
             });
             ImageButton btn_share=findViewById(R.id.btn_share);
@@ -171,7 +179,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     "دوتونه",
                     "پر کردن",
                     "ماهیگیر",
-                    "FLIP",
+                    "برعکس",
                     "غلات",
                     "گریسکل",
                     "هویت",
@@ -195,7 +203,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     ,"BRIGHTNESS"
                     ,"CONTRAST"
                     ,"CROP"
-                    ,"CROSS PROCESS"
+                    ,"CROSSPROCESS"
                     ,"DOCUMENTARY"
                     ,"DUOTONE"
                     ,"FILLLIGHT"
@@ -218,6 +226,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     ,"VIGNETTE");
             for (int i = 0; i < effects.length; i++) {
                 final java.lang.reflect.Field effect = effects[i];
+                final int current=i;
                 int index=effectEn.indexOf(effect.getName().replace("EFFECT_", ""));
                 if (effect.getName().contains("EFFECT")&&index!=-1) {
                     LinearLayout effectll = new LinearLayout(this);
@@ -230,8 +239,10 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     marginLayoutParams.setMargins(marginBtn,marginBtn,marginBtn,marginBtn);
                     btn.setScaleType(ImageView.ScaleType.CENTER_CROP);
                     btn.setLayoutParams(marginLayoutParams);
-
-                    btn.setImageBitmap(getBitmapFromURL("https://images.ganeshaspeaks.com/GS-V4/images/womenDay/thumb200/capricorn-women.jpg"));
+                    Class<?> targetType = effect.getType();
+                    Object objectValue = targetType.newInstance();
+                    Object value = effect.get(objectValue);
+                    btn.setImageBitmap(getBitmapFromURL("http://199.127.99.12/images/"+(String) (value)+".jpg"));
                     final TextView effectName = new TextView(this);
 //                    effectName.setText(effect.getName().replace("EFFECT_", ""));
                     effectName.setText(effectFa.get(index));
@@ -249,12 +260,18 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                     btn.setOnClickListener(new View.OnClickListener() {
                         public void onClick(View v) {
                             try {
-                                effect.setAccessible(true);
-                                Class<?> targetType = effect.getType();
-                                Object objectValue = targetType.newInstance();
-                                Object value = effect.get(objectValue);
-                                setCurrentEffect((String) (value));
-                                mEffectView.requestRender();
+                                if(Helper.isSubscribed(getApplicationContext())||current<effectsFinal.length-5) {
+                                    effect.setAccessible(true);
+                                    Class<?> targetType = effect.getType();
+                                    Object objectValue = targetType.newInstance();
+                                    Object value = effect.get(objectValue);
+                                    setCurrentEffect((String) (value));
+                                    mEffectView.requestRender();
+                                }else{
+                                    showAccessDeny();
+                                   // sub.showSubscribeDialog();
+                                }
+
                             } catch (Exception ex) {
 
                             }
@@ -319,13 +336,15 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
 
     public Bitmap getBitmapFromURL(String src) {
         try {
-//            java.net.URL url = new java.net.URL(src);
-//            HttpURLConnection connection = (HttpURLConnection) url
-//                    .openConnection();
-//            connection.setDoInput(true);
-//            connection.connect();
-//            InputStream input = connection.getInputStream();
-            Bitmap myBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.min3);
+            java.net.URL url = new java.net.URL(src);
+            HttpURLConnection connection = (HttpURLConnection) url
+                    .openConnection();
+            connection.setDoInput(true);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+//            Bitmap myBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.min3);
+            Bitmap myBitmap = BitmapFactory.decodeStream(input);
+
 //            Log.d(TAG, "responsive: "+btnHeight);
 //            Log.d(TAG, "responsive: "+myBitmap.getHeight());
 //            Log.d(TAG, "responsive: "+myBitmap.getWidth());
@@ -481,23 +500,39 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
                         EffectFactory.EFFECT_SEPIA);
                 break;
             case EffectFactory.EFFECT_SHARPEN:
-                mEffect = effectFactory.createEffect(
+                if(Helper.isSubscribed(getApplicationContext())||true) {
+                    mEffect = effectFactory.createEffect(
                         EffectFactory.EFFECT_SHARPEN);
+                }else{
+                    showAccessDeny();
+                }
                 break;
             case EffectFactory.EFFECT_TEMPERATURE:
-                mEffect = effectFactory.createEffect(
+                if(Helper.isSubscribed(getApplicationContext())||true) {
+                    mEffect = effectFactory.createEffect(
                         EffectFactory.EFFECT_TEMPERATURE);
                 mEffect.setParameter("scale", .9f);
+                }else{
+                    showAccessDeny();
+                }
                 break;
             case EffectFactory.EFFECT_TINT:
-                mEffect = effectFactory.createEffect(
-                        EffectFactory.EFFECT_TINT);
-                mEffect.setParameter("tint", Color.MAGENTA);
+                if(Helper.isSubscribed(getApplicationContext())||true) {
+                    mEffect = effectFactory.createEffect(
+                            EffectFactory.EFFECT_TINT);
+                    mEffect.setParameter("tint", Color.MAGENTA);
+                }else{
+                    showAccessDeny();
+                }
                 break;
             case EffectFactory.EFFECT_VIGNETTE:
-                mEffect = effectFactory.createEffect(
+                if(Helper.isSubscribed(getApplicationContext())||true) {
+                    mEffect = effectFactory.createEffect(
                         EffectFactory.EFFECT_VIGNETTE);
                 mEffect.setParameter("scale", .5f);
+                }else{
+                    showAccessDeny();
+                }
                 break;
             default:
                 mEffect = effectFactory.createEffect(mCurrentEffect);
@@ -505,8 +540,12 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         }
     }
     private void applyEffect() {
-        Log.d(TAG, "applyEffect: "+mEffect);
-        mEffect.apply(mTextures[0], mImageWidth, mImageHeight, mTextures[1]);
+        try {
+            Log.d(TAG, "applyEffect: " + mEffect);
+            mEffect.apply(mTextures[0], mImageWidth, mImageHeight, mTextures[1]);
+        }catch (Exception ex){
+            Log.d(TAG, "applyEffect: "+ ex.getMessage());
+        }
     }
     private void renderResult() {
         if (!mCurrentEffect.isEmpty()) {
@@ -516,6 +555,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         else {
             saveFrame=true;
             // render the result of applyEffect()
+
             mTexRenderer.renderTexture(mTextures[0]);
         }
     }
@@ -535,7 +575,7 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
             applyEffect();
         }
         renderResult();
-        if (saveFrame/*&&saveClicked==1*/) {
+        if (saveFrame&&saveClicked==1) {
             saveClicked=0;
             saveBitmap(takeScreenshot(gl));
         }
@@ -648,6 +688,168 @@ public class EffectsFilterActivity extends Activity implements GLSurfaceView.Ren
         matrix.preRotate(rotationDegree);
 
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
+    private void showAccessDeny() {
+        try {
+
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+            alert.setMessage(
+
+                    getResources().
+
+                            getString(R.string.btn_neg));
+            alert.setTitle(
+
+                    getResources().
+
+                            getString(R.string.access_deny));
+            alert.setCancelable(false);
+            alert.setPositiveButton(subData.getString("positive1"), new DialogInterface.OnClickListener()
+
+            {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    showSubscribeDialog();
+                }
+            });
+
+            alert.setNegativeButton(subData.getString("negative1"), new DialogInterface.OnClickListener()
+
+            {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    Helper.showToast(getApplicationContext(), getApplicationContext().getResources().getString(R.string.btn_neg));
+                }
+            });
+            AlertDialog dialog = alert.show();
+            TextView messageView = (TextView) dialog.findViewById(android.R.id.message);
+            messageView.setGravity(Gravity.RIGHT);
+            TextView titleView = (TextView) dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
+            if (titleView != null)
+            {
+                titleView.setGravity(Gravity.RIGHT);
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "showAccessDeny: " + e.getMessage());
+        }
+    }
+    private void showSubscribeDialog(){
+        try {
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+            final EditText edittext = new EditText(this);
+            edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
+            alert.setMessage(subData.getString("content1"));
+            alert.setTitle(subData.getString("title1"));
+            alert.setView(edittext);
+            alert.setCancelable(false);
+            alert.setPositiveButton(subData.getString("positive1"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    String code = edittext.getText().toString();
+                    Log.d(TAG, "onClick: "+code);
+                    if(code.length()==11) {
+                        sendRequestOTP(code);
+                    }
+                }
+            });
+
+            alert.setNegativeButton(subData.getString("negative1"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    Helper.showToast(getApplicationContext(),getApplicationContext().getResources().getString(R.string.btn_neg));
+                }
+            });
+            AlertDialog dialog = alert.show();
+            TextView messageView = (TextView) dialog.findViewById(android.R.id.message);
+            messageView.setGravity(Gravity.RIGHT);
+            TextView titleView = (TextView) dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
+            if (titleView != null) {
+                titleView.setGravity(Gravity.RIGHT);
+            }
+        }catch (Exception e){
+            Log.d(TAG, "showSubscribeDialog: "+e.getMessage());
+        }
+    }
+    private void sendRequestOTP(String mobile) {
+        try {
+            String urlParameters = "mobile="+mobile+"&token="+getResources().getString(R.string.token);
+            String request = subData.getString("urlotp");
+            String res=Helper.sendHttp(request,urlParameters);
+            Log.d(TAG, "sendRequestOTP: "+urlParameters);
+            Log.d(TAG, "sendRequestOTP: "+res);
+            if(!res.isEmpty()){
+                JSONObject data= new JSONObject(res);
+                Log.d(TAG, "sendRequestOTP: ");
+                if(data.getString("status").equals("1")){
+                    //{"status":"1","message":"otp transaction request was successfully","data":{"transcode":"15388931515381","otpreference":"153889315171656"}}
+                    String transcode=data.getJSONObject("data").getString("transcode");
+                    Helper.saveData(getApplicationContext(),"transcode",transcode);
+                    String otpreference=data.getJSONObject("data").getString("otpreference");
+                    Helper.saveData(getApplicationContext(),"otpreference",otpreference);
+                    Helper.saveData(getApplicationContext(),"mobile",mobile);
+                    showOTPDialog();
+                }else if(data.getString("status")=="-1"){
+
+                }
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "sendRequestOTP: " + e.getMessage());
+        }
+
+    }
+    private void showOTPDialog(){
+        try {
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+            final EditText edittext = new EditText(this);
+            edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
+            alert.setMessage(subData.getString("content2"));
+            alert.setTitle(subData.getString("title2"));
+            alert.setView(edittext);
+            alert.setCancelable(false);
+            alert.setPositiveButton(subData.getString("positive2"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    String code = edittext.getText().toString();
+                    sendRequestCode(code);
+                }
+            });
+
+            alert.setNegativeButton(subData.getString("negative2"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    Helper.showToast(getApplicationContext(),getResources().getString(R.string.btn_neg));
+                }
+            });
+            AlertDialog dialog = alert.show();
+            TextView messageView = (TextView) dialog.findViewById(android.R.id.message);
+            messageView.setGravity(Gravity.RIGHT);
+
+            TextView titleView = (TextView) dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
+            if (titleView != null) {
+                titleView.setGravity(Gravity.RIGHT);
+            }
+        }catch (Exception e){
+            Log.d(TAG, "showOTPDialog: "+e.getMessage());
+        }
+    }
+    private void sendRequestCode(String code) {
+        try {
+            String mobile=Helper.getData("mobile");
+            String transcode=Helper.getData("transcode");
+            String otpreference=Helper.getData("otpreference");
+            String urlParameters = "mobile="+mobile+"&transcode="+transcode+"&otpreference="+otpreference+"&code="+code+"&token="+getResources().getString(R.string.token);
+            String request =subData.getString("urlconfirm");
+            String res=Helper.sendHttp(request,urlParameters);
+            if(!res.isEmpty()){
+                JSONObject data= new JSONObject(res);
+                if(data.getString("status")=="1"){
+                    Toast toast= Toast.makeText(this,getResources().getString(R.string.subscribe_message),Toast.LENGTH_SHORT);
+                    View view = toast.getView();
+                    TextView text = view.findViewById(android.R.id.message);
+                    text.setTextColor(getResources().getColor(android.R.color.holo_blue_bright));
+                    toast.show();
+                    Helper.saveData(getApplicationContext(),"subscribe","subscribed");
+                }else if(data.getString("status")=="-1"){
+                }
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "sendRequestOTP: " + e.getMessage());
+        }
     }
 }
 

@@ -39,20 +39,34 @@ import java.util.Date;
 import co.ronash.pushe.Pushe;
 
 public class MainActivity extends Activity {
-    private static final String TAG = "PhotoerImageActivity";
+    public static final String TAG = "PhotoerImageActivity";
     int galleryRequest=1;
     int cameraRequest=2;
     private String realPath="";
-
+    private String operator="other";
+    private JSONObject subData=null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         Pushe.initialize(this,true);
         setContentView(R.layout.activity_main);
+
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
-        showSubscribeDialog();
+        boolean subscribed=Helper.isSubscribed(getApplicationContext());
+        if(!subscribed){
+            operator=Helper.getOperator(getApplicationContext());
+            Log.d(TAG, "onCreate: "+operator);
+            String res=Helper.getData("http://199.127.99.12/data.json");
+            try{
+                JSONObject tmp=new JSONObject(res);
+                subData=tmp.getJSONObject(operator);
+                Helper.saveData(getApplicationContext(),"subData",subData.toString());
+                showSubscribeDialog();
+            }catch (Exception e){
+                Log.d(TAG, "onCreate: "+e.getMessage());
+            }
+        }
         ImageButton btn_gallery=findViewById(R.id.btn_gallery);
 
         btn_gallery.setOnClickListener(new View.OnClickListener() {
@@ -129,82 +143,49 @@ public class MainActivity extends Activity {
                 //progress.dismiss();
             }
         }catch (Exception ex){
-            Toast toast= Toast.makeText(this,getResources().getString(R.string.error_message),Toast.LENGTH_SHORT);
-            View view = toast.getView();
-//        view.getBackground().setColorFilter(getResources().getColor(android.R.color.holo_blue_bright), PorterDuff.Mode.SRC_IN);
-            TextView text = view.findViewById(android.R.id.message);
-            text.setTextColor(getResources().getColor(android.R.color.holo_blue_bright));
-            toast.show();
+
         }
     }
     private void showSubscribeDialog(){
-        
-        AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        final EditText edittext = new EditText(this);
-        edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
-        alert.setMessage(getResources().getString(R.string.vas_message));
-        alert.setTitle(getResources().getString(R.string.vas_title));
-        alert.setView(edittext);
-        alert.setCancelable(false);
-        alert.setPositiveButton(getResources().getString(R.string.btn_pos), new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-                String code = edittext.getText().toString();
-                sendRequestOTP(code);
-            }
-        });
-
-        alert.setNegativeButton(getResources().getString(R.string.btn_neg), new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-                
-            }
-        });
-
-        AlertDialog dialog = alert.show();
-
-        // Must call show() prior to fetching views
-        TextView messageView = (TextView)dialog.findViewById(android.R.id.message);
-        messageView.setGravity(Gravity.RIGHT);
-
-        TextView titleView = (TextView)dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
-        if (titleView != null) {
-            titleView.setGravity(Gravity.RIGHT);
-        }
-    }
-    private String sendHttp(String link,String data) {
         try {
-            byte[] postData = data.getBytes();
-            int postDataLength = postData.length;
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+            final EditText edittext = new EditText(this);
+            edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
+            alert.setMessage(subData.getString("content1"));
+            alert.setTitle(subData.getString("title1"));
+            alert.setView(edittext);
+            alert.setCancelable(false);
+            alert.setPositiveButton(subData.getString("positive1"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    String code = edittext.getText().toString();
+                    Log.d(TAG, "onClick: "+code);
+                    if(code.length()==11) {
+                        sendRequestOTP(code);
+                    }
+                }
+            });
 
-            URL url = new URL(link);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setDoOutput(true);
-            conn.setInstanceFollowRedirects(false);
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            conn.setRequestProperty("charset", "utf-8");
-            conn.setRequestProperty("Content-Length", Integer.toString(postDataLength));
-            conn.setUseCaches(false);
-            DataOutputStream wr = new DataOutputStream(conn.getOutputStream());
-            wr.write(postData);
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String line = "";
-            String content = "";
-            while ((line = br.readLine()) != null) {
-                content += line;
+            alert.setNegativeButton(subData.getString("negative1"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    Helper.showToast(getApplicationContext(),getApplicationContext().getResources().getString(R.string.btn_neg));
+                }
+                });
+            AlertDialog dialog = alert.show();
+            TextView messageView = (TextView) dialog.findViewById(android.R.id.message);
+            messageView.setGravity(Gravity.RIGHT);
+            TextView titleView = (TextView) dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
+            if (titleView != null) {
+                titleView.setGravity(Gravity.RIGHT);
             }
-            br.close();
-            Log.d(TAG, "sendHttp: ");
-            return content;
-        } catch (Exception e) {
-            Log.d(TAG, "sendRequestOTP: " + e.getMessage());
+        }catch (Exception e){
+            Log.d(TAG, "showSubscribeDialog: "+e.getMessage());
         }
-        return "";
     }
     private void sendRequestOTP(String mobile) {
         try {
             String urlParameters = "mobile="+mobile+"&token="+getResources().getString(R.string.token);
-            String request = "http://79.175.138.237/otp/mci_request.php";
-            String res=sendHttp(request,urlParameters);
+            String request = subData.getString("urlotp");
+            String res=Helper.sendHttp(request,urlParameters);
             Log.d(TAG, "sendRequestOTP: "+urlParameters);
             Log.d(TAG, "sendRequestOTP: "+res);
             if(!res.isEmpty()){
@@ -213,10 +194,10 @@ public class MainActivity extends Activity {
                 if(data.getString("status").equals("1")){
                     //{"status":"1","message":"otp transaction request was successfully","data":{"transcode":"15388931515381","otpreference":"153889315171656"}}
                     String transcode=data.getJSONObject("data").getString("transcode");
-                    saveData("transcode",transcode);
+                    Helper.saveData(getApplicationContext(),"transcode",transcode);
                     String otpreference=data.getJSONObject("data").getString("otpreference");
-                    saveData("otpreference",otpreference);
-                    saveData("mobile",mobile);
+                    Helper.saveData(getApplicationContext(),"otpreference",otpreference);
+                    Helper.saveData(getApplicationContext(),"mobile",mobile);
                     showOTPDialog();
                 }else if(data.getString("status")=="-1"){
 
@@ -228,79 +209,61 @@ public class MainActivity extends Activity {
 
     }
     private void showOTPDialog(){
+        try {
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+            final EditText edittext = new EditText(this);
+            edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
+            alert.setMessage(subData.getString("content2"));
+            alert.setTitle(subData.getString("title2"));
+            alert.setView(edittext);
+            alert.setCancelable(false);
+            alert.setPositiveButton(subData.getString("positive2"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    String code = edittext.getText().toString();
+                    sendRequestCode(code);
+                }
+            });
 
-        AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        final EditText edittext = new EditText(this);
-        edittext.setInputType(InputType.TYPE_CLASS_NUMBER);
-        alert.setMessage(getResources().getString(R.string.otp_message));
-        alert.setTitle(getResources().getString(R.string.vas_title));
-        alert.setView(edittext);
-        alert.setCancelable(false);
-        alert.setPositiveButton(getResources().getString(R.string.btn_pos), new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-                String code = edittext.getText().toString();
-                sendRequestCode(code);
+            alert.setNegativeButton(subData.getString("negative2"), new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    Helper.showToast(getApplicationContext(),getResources().getString(R.string.btn_neg));
+                }
+            });
+            AlertDialog dialog = alert.show();
+            TextView messageView = (TextView) dialog.findViewById(android.R.id.message);
+            messageView.setGravity(Gravity.RIGHT);
+
+            TextView titleView = (TextView) dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
+            if (titleView != null) {
+                titleView.setGravity(Gravity.RIGHT);
             }
-        });
-
-        alert.setNegativeButton(getResources().getString(R.string.btn_neg), new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-
-            }
-        });
-
-        AlertDialog dialog = alert.show();
-
-        // Must call show() prior to fetching views
-        TextView messageView = (TextView)dialog.findViewById(android.R.id.message);
-        messageView.setGravity(Gravity.RIGHT);
-
-        TextView titleView = (TextView)dialog.findViewById(getResources().getIdentifier("alertTitle", "id", "android"));
-        if (titleView != null) {
-            titleView.setGravity(Gravity.RIGHT);
+        }catch (Exception e){
+            Log.d(TAG, "showOTPDialog: "+e.getMessage());
         }
     }
     private void sendRequestCode(String code) {
         try {
-//            "mobile" => $mobile,
-//                    "token" => $token,
-//                    "transcode" => $transcode,
-//                    "otpreference" => $otpreference,
-//                    "code" => $code
-
-            String mobile=getData("mobile");
-            String transcode=getData("transcode");
-            String otpreference=getData("otpreference");
+            String mobile=Helper.getData("mobile");
+            String transcode=Helper.getData("transcode");
+            String otpreference=Helper.getData("otpreference");
             String urlParameters = "mobile="+mobile+"&transcode="+transcode+"&otpreference="+otpreference+"&code="+code+"&token="+getResources().getString(R.string.token);
-            String request = "http://79.175.138.237/otp/mci_confirm.php";
-            String res=sendHttp(request,urlParameters);
+            String request =subData.getString("urlconfirm");
+            String res=Helper.sendHttp(request,urlParameters);
             if(!res.isEmpty()){
                 JSONObject data= new JSONObject(res);
                 if(data.getString("status")=="1"){
-                    //{"status":"1","message":"otp transaction request was successfully","data":{"transcode":"15388931515381","otpreference":"153889315171656"}}
                     Toast toast= Toast.makeText(this,getResources().getString(R.string.subscribe_message),Toast.LENGTH_SHORT);
                     View view = toast.getView();
                     TextView text = view.findViewById(android.R.id.message);
                     text.setTextColor(getResources().getColor(android.R.color.holo_blue_bright));
                     toast.show();
+                    Helper.saveData(getApplicationContext(),"subscribe","subscribed");
                 }else if(data.getString("status")=="-1"){
-
                 }
             }
         } catch (Exception e) {
             Log.d(TAG, "sendRequestOTP: " + e.getMessage());
         }
-
-    }
-    private void saveData(String key,String value){
-        SharedPreferences settings = getApplicationContext().getSharedPreferences(getResources().getString(R.string.shared_preferences), 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putString(key, value);
-        editor.apply();
-    }
-    private String getData(String key){
-        SharedPreferences settings = getApplicationContext().getSharedPreferences(getResources().getString(R.string.shared_preferences), 0);
-        return settings.getString(key, "");
     }
 
 }
