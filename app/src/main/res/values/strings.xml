@@ -3,6 +3,8 @@
     <string name="save_message">تصویر ذخیره شد</string>
     <string name="share_message">اپ عکسینه</string>
     <string name="error_message">مشکلی به وجود آمده . دوباره امتحان کنید</string>
+    <string name="before_sended_message">کد قبلا برای شما ارسال شده است</string>
+    <string name="before_subscribe_message">شما قبلا عضو سرویس شده اید</string>
     <string name="vas_title">اپلیکیشن ستاره شو </string>
     <string name="subscribe_message">شما با موفقیت عضو شدید</string>
     <string name="otp_message">کد ارسال شده را وارد کنید</string>
@@ -17,6 +19,7 @@ http://ndigi.ir/images/apps/file/setareshow.apk
     <string name="btn_accept">عضو میشم</string>
     <string name="access_deny">دسترسی محدود</string>
     <string name="btn_neg">بعضی از افکت های موجود در اپ در صورت عضویت در سرویس فعال میشود</string>
+    <string name="access_message">این افکت در صورت عضو شدن در سرویس ستاره شو قابل دسترس است</string>
     <string name="token">70763b1524dde867d96c8e76f84de4f2</string>
     <string name="shared_preferences">ImageEditorSharedPreferences</string>
 

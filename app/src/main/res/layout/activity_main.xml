@@ -7,7 +7,7 @@
     android:gravity="center|top"
     android:paddingTop="100dp"
     android:background="@drawable/bg"
-    tools:context="ir.alimahmoodvan.imageeditor.MainActivity">
+    tools:context="com.image.editor.MainActivity">
 
     <ImageButton
         android:id="@+id/btn_gallery"

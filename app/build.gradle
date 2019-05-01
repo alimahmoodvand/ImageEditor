@@ -4,7 +4,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 26
     defaultConfig {
-        applicationId "ir.alimahmoodvan.imageeditor"
+        applicationId "com.image.editor"
         minSdkVersion 15
         targetSdkVersion 22
         versionCode 1
